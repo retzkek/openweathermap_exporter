@@ -12,35 +12,40 @@ import (
 )
 
 type Config struct {
-    ApiKey       string    `env:"OWM_API_KEY"`
-    Location         string    `env:"OWM_LOCATION" envDefault:"Lille,FR"`
+	ApiKey   string `env:"OWM_API_KEY"`
+	Location string `env:"OWM_LOCATION" envDefault:"Lille,FR"`
+	Duration int    `env:"OWM_DURATION" envDefault:5"`
 }
 
-func recordMetrics() {
-	go func() {
-		w, err := owm.NewCurrent("C", "FR", cfg.ApiKey) // (internal - OpenWeatherMap reference for kelvin) with English output
-		if err != nil {
-			log.Fatalln(err)
-		}
+func load_metrics(location string) {
 
-		w.CurrentByName(cfg.Location)
+	for {
+		
+		go func(location string) {
+			w, err := owm.NewCurrent("C", "FR", cfg.ApiKey) // (internal - OpenWeatherMap reference for kelvin) with English output
+			if err != nil {
+				log.Fatalln(err)
+			}
 
-		temp.WithLabelValues(cfg.Location).Set(w.Main.Temp)
+			w.CurrentByName(location)
 
-		pressure.WithLabelValues(cfg.Location).Set(w.Main.Pressure)
+			temp.WithLabelValues(location).Set(w.Main.Temp)
 
-		humidity.WithLabelValues(cfg.Location).Set(float64(w.Main.Humidity))
+			pressure.WithLabelValues(location).Set(w.Main.Pressure)
 
-		wind.WithLabelValues(cfg.Location).Set(w.Wind.Speed)
+			humidity.WithLabelValues(location).Set(float64(w.Main.Humidity))
 
-		clouds.WithLabelValues(cfg.Location).Set(float64(w.Clouds.All))
+			wind.WithLabelValues(location).Set(w.Wind.Speed)
+
+			clouds.WithLabelValues(location).Set(float64(w.Clouds.All))
+			log.Println("scraping OK for ", location)
+		}(location)
 		time.Sleep(60 * time.Second)
-
-	}()
+	}
 }
 
 var (
-	cfg = Config{}
+	cfg  = Config{}
 	temp = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "openweathermap",
 		Name:      "temperature_celsius",
@@ -75,8 +80,14 @@ var (
 func main() {
 
 	env.Parse(&cfg)
+	prometheus.Register(temp)
+	prometheus.Register(pressure)
+	prometheus.Register(humidity)
+	prometheus.Register(wind)
+	prometheus.Register(clouds)
 
-	recordMetrics()
+	go load_metrics(cfg.Location)
+
 	http.Handle("/metrics", promhttp.Handler())
 	http.ListenAndServe(":2112", nil)
 }
