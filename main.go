@@ -56,6 +56,18 @@ func loadMetrics(ctx context.Context, location string) <-chan error {
 				wind.WithLabelValues(location).Set(w.Wind.Speed)
 
 				clouds.WithLabelValues(location).Set(float64(w.Clouds.All))
+
+				rain.WithLabelValues(location).Set(w.Rain.ThreeH)
+
+				var scraped_weather = w.Weather[0].Description
+				if scraped_weather ==  last_weather {
+					weather.WithLabelValues(location, scraped_weather).Set(1)
+				} else {
+					weather.WithLabelValues(location, scraped_weather).Set(1)
+					weather.WithLabelValues(location, last_weather).Set(0)
+					last_weather = scraped_weather
+				}
+				log.Println(w.Weather[0].Description)
 				log.Println("scraping OK for ", location)
 			}
 		}
@@ -97,6 +109,18 @@ var (
 		Name:      "cloudiness_percent",
 		Help:      "Cloudiness in Percent",
 	}, []string{"location"})
+	rain = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "openweathermap",
+		Name:      "rain",
+		Help:      "Rain contents 3h",
+	}, []string{"location"})
+	weather = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+    	Namespace: "openweathermap",
+        Name: "weather",
+        Help: "The weather label.",
+    }, []string{"location", "weather"})
+
+    last_weather = ""
 )
 
 func main() {
@@ -107,6 +131,7 @@ func main() {
 	prometheus.Register(humidity)
 	prometheus.Register(wind)
 	prometheus.Register(clouds)
+	prometheus.Register(weather)
 
 	errC := loadMetrics(context.TODO(), cfg.Location)
 	go func() {
