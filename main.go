@@ -19,6 +19,7 @@ type Config struct {
 	requestTimeout  time.Duration
 	APIKey          string `env:"OWM_API_KEY"` // APIKey delivered by Openweathermap
 	Location        string `env:"OWM_LOCATION" envDefault:"Lille,FR"`
+	Language        string `env:"OWM_LANGUAGE" envDefault:"fr"`
 	Duration        int    `env:"OWM_DURATION" envDefault:"5"`
 }
 
@@ -35,7 +36,7 @@ func loadMetrics(ctx context.Context, location string) <-chan error {
 					Timeout: cfg.requestTimeout,
 				}
 
-				w, err := owm.NewCurrent("C", "FR", cfg.APIKey, owm.WithHttpClient(client)) // (internal - OpenWeatherMap reference for kelvin) with English output
+				w, err := owm.NewCurrent("C", cfg.Language, cfg.APIKey, owm.WithHttpClient(client))
 				if err != nil {
 					errC <- err
 					continue
