@@ -60,7 +60,7 @@ func loadMetrics(ctx context.Context, location string) <-chan error {
 				rain.WithLabelValues(location).Set(w.Rain.ThreeH)
 
 				var scraped_weather = w.Weather[0].Description
-				if scraped_weather ==  last_weather {
+				if scraped_weather == last_weather {
 					weather.WithLabelValues(location, scraped_weather).Set(1)
 				} else {
 					weather.WithLabelValues(location, scraped_weather).Set(1)
@@ -115,12 +115,12 @@ var (
 		Help:      "Rain contents 3h",
 	}, []string{"location"})
 	weather = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-    	Namespace: "openweathermap",
-        Name: "weather",
-        Help: "The weather label.",
-    }, []string{"location", "weather"})
+		Namespace: "openweathermap",
+		Name:      "weather",
+		Help:      "The weather label.",
+	}, []string{"location", "weather"})
 
-    last_weather = ""
+	last_weather = ""
 )
 
 func main() {
